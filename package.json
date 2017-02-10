@@ -1,11 +1,15 @@
 {
   "name": "hackmudirc",
   "version": "1.0.0",
-  "description": "",
+  "description": "Hackmud IRC gateway",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "Doridian <mriq91@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "bluebird": "^3.4.7",
+    "request": "^2.79.0"
+  }
 }
