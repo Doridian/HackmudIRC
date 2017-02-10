@@ -80,7 +80,11 @@ class IRCClient {
 			const to = message.channel ? `#${message.channel}` : message.to_user;
 			let msg = message.msg;
 
-			msg = msg.replace(/[\u0001\u0002]/g, '');
+			if (message.channel && !this.channels[to]) {
+				this.joinTo(to);
+			}
+
+			msg = msg.replace(/[\u0001\u0002\r]/g, '');
 
 			const i = this._selfMessages.indexOf(`${to}|${msg}`);
 			if (i !== -1) {
@@ -88,14 +92,18 @@ class IRCClient {
 				return;
 			}
 
+			msg = msg.split('\n');
+
 			if (message.from_user === this.nick && message.to_user) {
 				if (message.to_user === this.nick) {
 					return;
 				}
-				return this.sendRaw(`${message.to_user}!${message.to_user}@hackmud.trustnet`, 'PRIVMSG', this.nick, '\u0001ACTION [REPLAY] ' + msg + '\u0001');
+				msg.forEach(m => this.sendRaw(`${message.to_user}!${message.to_user}@hackmud.trustnet`, 'PRIVMSG', this.nick, `\u0001ACTION [SELF] ${m}\u0001`));
+				return;
 			}
 
-			return this.sendRaw(from, 'PRIVMSG', to, msg);
+
+			msg.forEach(m => this.sendRaw(from, 'PRIVMSG', to, m));
 		})
 		.catch(e => {
 			console.error(e.stack || e);
@@ -119,7 +127,6 @@ class IRCClient {
 	}
 
 	onCommand(cmd, args) {
-		console.log(cmd);
 		switch (cmd) {
 			case 'PASS':
 				return this.apiClient.login(args[0])
@@ -135,6 +142,9 @@ class IRCClient {
 				this.nick = args[0];
 				return this.checkReady();
 			case 'USER':
+				if (this.ident) {
+					return;
+				}
 				this.ident = args[0]; 
 				return this.checkReady();
 			case 'PING':
@@ -178,8 +188,7 @@ class IRCClient {
 				if (this.channels[jchan]) {
 					return;
 				}
-				this.sendRawFromServer('475', this.formatNickForNumeric(), 'Cannot join channel (+k)');
-				return this.leaveFrom(jchan);
+				return this.sendRawFromServer('475', this.formatNickForNumeric(), 'Cannot join channel (+k)');
 			case 'PART':
 				// TODO: Wait for Sean
 				const pchan = args[0];
@@ -206,6 +215,7 @@ class IRCClient {
 		}
 
 		if (this.nick && this.ident && this.loggedIn) {
+			this._oldFullIdent = this.fullIdent;
 			this.fullIdent = `${this.nick}!${this.ident}@hackmud.trustnet`;
 
 			return this.apiClient.setUsername(this.nick)
@@ -224,7 +234,11 @@ class IRCClient {
 				}
 
 				if (wasUserSwap) {
-					this.channels.forEach(c => this.leaveFrom(c));
+					if (this._oldFullIdent) {
+						this.sendRaw(this._oldFullIdent, 'NICK', this.nick);
+					}
+					this._selfMessages = [];
+					Object.keys(this.channels).forEach(c => this.leaveFrom(c));
 					channels.forEach(c => this.joinTo(c));
 				}
 			})
@@ -240,7 +254,7 @@ class IRCClient {
 			channel = `#${channel}`;
 		}
 		delete this.channels[channel];
-		return this.sendRawFromServer('KICK', channel, this.nick);
+		return this.sendRaw('*system!system@hackmud.trustnet', 'KICK', channel, this.nick, 'You are not in this channel anymore');
 	}
 
 	joinTo(channel) {
