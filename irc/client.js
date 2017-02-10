@@ -155,6 +155,7 @@ class IRCClient {
 				return this.checkReady();
 			case 'PING':
 				return this.sendRawFromServer('PONG', args[0]);
+			case 'NOTICE':
 			case 'PRIVMSG':
 				if (!this.isWelcomed) {
 					return;
@@ -188,6 +189,8 @@ class IRCClient {
 					});
 			case 'MODE':
 			case 'QUIT':
+			case 'WHOIS':
+			case 'KICK':
 				return;
 			case 'NAMES':
 				return this.sendChannelNames(args[0]);
