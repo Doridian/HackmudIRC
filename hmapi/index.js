@@ -86,6 +86,14 @@ class APIClient {
 		.then(res => {
 			return res.chats[this.username] || [];
 		})
+		.filter(msg => {
+			if (msg && msg.id && !this.handledMessages[msg.id]) {
+				this.handledMessages[msg.id] = true;
+				return true;
+			}
+
+			return false;
+		})
 		.then(messages => {
 			this.lastPoll = messages.reduce((i, ele) => {
 				if (!ele || !ele.t) {
@@ -99,14 +107,6 @@ class APIClient {
 				return i;
 			}, this.lastPoll);
 			return messages;
-		})
-		.filter(msg => {
-			if (msg && msg.id && !this.handledMessages[msg.id]) {
-				this.handledMessages[msg.id] = true;
-				return true;
-			}
-
-			return false;
 		})
 		.then(messages => {
 			return messages.sort((a,b) => {
