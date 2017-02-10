@@ -1,4 +1,4 @@
 'use strict';
 
-const IRCServer = require('./irc/index.js');
+const IRCServer = require('./irc/server');
 
