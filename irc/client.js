@@ -97,7 +97,7 @@ class IRCClient {
 
 			msg = msg.replace(/[\u0001\u0002\r]/g, '');
 
-			if (this._checkSelfMessage(to, msg)) {
+			if (message.from_user === this.nick && this._checkSelfMessage(to, msg)) {
 				return;
 			}
 
