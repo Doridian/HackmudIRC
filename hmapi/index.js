@@ -101,7 +101,7 @@ class APIClient {
 			return messages;
 		})
 		.filter(msg => {
-			if (!this.handledMessages[msg.id]) {
+			if (msg && msg.id && !this.handledMessages[msg.id]) {
 				this.handledMessages[msg.id] = true;
 				return true;
 			}
