@@ -104,7 +104,7 @@ class IRCClient {
 			msg = msg.split('\n');
 
 			if (message.from_user === this.nick && message.to_user) {
-				msg.forEach(m => this.sendRaw(`${message.to_user}!${message.to_user}@hackmud.trustnet`, 'PRIVMSG', this.nick, `\u0001ACTION [SELF] ${colors.hackmudToIrc(m)}\u0001`));
+				msg.forEach(m => this.sendRaw(`${message.to_user}!${message.to_user}@hackmud.trustnet`, 'PRIVMSG', this.nick, `\x01ACTION [SELF] ${colors.hackmudToIrc(m)}\x01`));
 				return;
 			}
 
