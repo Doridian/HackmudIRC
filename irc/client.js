@@ -95,9 +95,9 @@ class IRCClient {
 				this.joinTo(to);
 			}
 
-			msg = msg.replace(/[\u0001\u0002\r]/g, '');
+			msg = msg.replace(/[\x01\x02\r]/g, '');
 
-			if (message.from_user === this.nick && this._checkSelfMessage(to, colors.hackmudToIrc(msg))) {
+			if (message.from_user === this.nick && this._checkSelfMessage(to, msg)) {
 				return;
 			}
 
@@ -183,7 +183,7 @@ class IRCClient {
 
 				return p
 					.catch(e => {
-						this._checkSelfMessage(pmsgTo, msg)
+						this._checkSelfMessage(pmsgTo, msg);
 						console.warn(e.stack || e);
 					});
 			case 'MODE':
