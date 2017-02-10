@@ -2,6 +2,7 @@
 
 const Promise = require('bluebird');
 const APIClient = require('../hmapi/index');
+const colors = require('../util/colors');
 
 function emitLines (stream) {
 	let backlog = ''
@@ -96,15 +97,12 @@ class IRCClient {
 			msg = msg.split('\n');
 
 			if (message.from_user === this.nick && message.to_user) {
-				if (message.to_user === this.nick) {
-					return;
-				}
-				msg.forEach(m => this.sendRaw(`${message.to_user}!${message.to_user}@hackmud.trustnet`, 'PRIVMSG', this.nick, `\u0001ACTION [SELF] ${m}\u0001`));
+				msg.forEach(m => this.sendRaw(`${message.to_user}!${message.to_user}@hackmud.trustnet`, 'PRIVMSG', this.nick, `\u0001ACTION [SELF] ${colors.hackmudToIrc(m)}\u0001`));
 				return;
 			}
 
 
-			msg.forEach(m => this.sendRaw(from, 'PRIVMSG', to, m));
+			msg.forEach(m => this.sendRaw(from, 'PRIVMSG', to, colors.hackmudToIrc(m)));
 		})
 		.catch(e => {
 			console.error(e.stack || e);
@@ -164,6 +162,8 @@ class IRCClient {
 					}
 					msg = '*' + msg.substring(8, msg.length - 1) + '*';
 				}
+
+				msg = colors.ircToHackmud(msg);
 
 				let p;
 				if (pmsgTo.charAt(0) === '#') {
