@@ -23,6 +23,7 @@ function sendAPI(method, params) {
 }
 
 const ADJUST_MARGIN = 0.0001;
+const FETCH_HISTORY = 5 * 60;
 
 class APIClient {
 	constructor() {
@@ -69,7 +70,7 @@ class APIClient {
 		}
 
 		this.handledMessages = {};
-		this.lastPoll = 0;
+		this.lastPoll = (Date.now() / 1000.0) - FETCH_HISTORY;
 		this.username = username;
 		this.channels = channels;
 
@@ -81,15 +82,21 @@ class APIClient {
 			return Promise.reject(new Error('Not logged in'));
 		}
 
-		return sendAPI('chats', { chat_token: this.token, usernames: [this.username] })
+		return sendAPI('chats', { chat_token: this.token, after: this.lastPoll - ADJUST_MARGIN, usernames: [this.username] })
 		.then(res => {
 			return res.chats[this.username] || [];
 		})
 		.then(messages => {
 			this.lastPoll = messages.reduce((i, ele) => {
-				if (!i || ele.t > i) {
-					i = ele.t;
+				if (!ele || !ele.t) {
+					return i;
 				}
+
+				if (!i || ele.t > i) {
+					return ele.t;
+				}
+
+				return i;
 			}, this.lastPoll);
 			return messages;
 		})
