@@ -209,7 +209,7 @@ class IRCClient {
 				}
 				return this.joinTo(pchan);
 			default:
-				console.log(cmd, args);
+				console.log('Unknown IRC command', cmd, args);
 		}
 	}
 
