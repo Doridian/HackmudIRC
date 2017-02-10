@@ -23,7 +23,7 @@ function sendAPI(method, params) {
 }
 
 const ADJUST_MARGIN = 0.0001;
-const FETCH_HISTORY_SECONDS = 5 * 60;
+const FETCH_HISTORY_SECONDS = 15 * 60;
 const FETCH_KEEP_HANDLED_ID = 30 * 60 * 1000;
 
 class APIClient {
@@ -38,7 +38,7 @@ class APIClient {
 		this.channels = [];
 		this.ready = false;
 		this.lastPoll = 0;
-		this.handledMessages = {};
+		this.pivotMessage = null;
 	}
 
 	login(token) {
@@ -70,7 +70,7 @@ class APIClient {
 			return Promise.reject(new Error('You do not own that user'));
 		}
 
-		this.handledMessages = {};
+		this.pivotMessage = null;
 		this.lastPoll = (Date.now() / 1000.0) - FETCH_HISTORY_SECONDS;
 		this.username = username;
 		this.channels = channels;
@@ -83,46 +83,16 @@ class APIClient {
 			return Promise.reject(new Error('Not logged in'));
 		}
 
+		let hitPivot = false;
+
 		return sendAPI('chats', { chat_token: this.token, after: this.lastPoll - ADJUST_MARGIN, usernames: [this.username] })
 		.then(res => {
 			return res.chats[this.username] || [];
 		})
 		.filter(msg => {
-			if (!msg || !msg.id) {
-				return false;
-			}
-
-			const ret = !this.handledMessages[msg.id];
-			this.handledMessages[msg.id] = Date.now();
-			return ret;
+			return msg && msg.id && msg.t;
 		})
 		.then(messages => {
-			return Promise.reduce(messages, (i, ele) => {
-				if (!ele || !ele.t) {
-					return i;
-				}
-
-				if (!i || ele.t > i) {
-					return ele.t;
-				}
-
-				return i;
-			}, this.lastPoll)
-			.then(l => {
-				this.lastPoll = l;
-			})
-			.thenReturn(messages);
-		})
-		.then(messages => {
-			process.nextTick(() => {
-				const minTime = Date.now() - FETCH_KEEP_HANDLED_ID;
-				Object.keys(this.handledMessages).forEach(id => {
-					if (this.handledMessages[id] < minTime) {
-						delete this.handledMessages[id];
-					}
-				});
-			});
-
 			return messages.sort((a,b) => {
 				if (a.t > b.t) {
 					return 1;
@@ -131,6 +101,45 @@ class APIClient {
 				}
 				return a.id.localeCompare(b.id);
 			});
+		})
+		.then(messages => {
+			if (!this.pivotMessage) {
+				return messages;
+			}
+
+			let pivotIdx = -1;
+			for (let i = 0; i < messages.length; i++) {
+				if (messages[i].id === this.pivotMessage) {
+					pivotIdx = i;
+					break;
+				}
+			}
+
+			if (pivotIdx < 0) {
+				return messages;
+			}
+
+			messages.splice(0, pivotIdx + 1);
+			return messages;
+		})
+		.filter(msg => {
+			if (!this.pivotMessage) {
+				return true;
+			}
+
+			if (msg.id === this.pivotMessage) {
+				hitPivot = true;
+				return false;
+			}
+
+			return hitPivot;
+		})
+		.tap(messages => {
+			const msg = messages[0];
+			if (msg) {
+				this.lastPoll = msg.t;
+				this.pivotMessage = msg.id;
+			}
 		});
 	}
 
