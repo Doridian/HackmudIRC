@@ -23,7 +23,8 @@ function sendAPI(method, params) {
 }
 
 const ADJUST_MARGIN = 0.0001;
-const FETCH_HISTORY = 5 * 60;
+const FETCH_HISTORY_SECONDS = 5 * 60;
+const FETCH_KEEP_HANDLED_ID = 30 * 60 * 1000;
 
 class APIClient {
 	constructor() {
@@ -70,7 +71,7 @@ class APIClient {
 		}
 
 		this.handledMessages = {};
-		this.lastPoll = (Date.now() / 1000.0) - FETCH_HISTORY;
+		this.lastPoll = (Date.now() / 1000.0) - FETCH_HISTORY_SECONDS;
 		this.username = username;
 		this.channels = channels;
 
@@ -87,12 +88,13 @@ class APIClient {
 			return res.chats[this.username] || [];
 		})
 		.filter(msg => {
-			if (msg && msg.id && !this.handledMessages[msg.id]) {
-				this.handledMessages[msg.id] = true;
-				return true;
+			if (!msg || !msg.id) {
+				return false;
 			}
 
-			return false;
+			const ret = !this.handledMessages[msg.id];
+			this.handledMessages[msg.id] = Date.now();
+			return ret;
 		})
 		.then(messages => {
 			return Promise.reduce(messages, (i, ele) => {
@@ -112,6 +114,15 @@ class APIClient {
 			.thenReturn(messages);
 		})
 		.then(messages => {
+			process.nextTick(() => {
+				const minTime = Date.now() - FETCH_KEEP_HANDLED_ID;
+				Object.keys(this.handledMessages).forEach(id => {
+					if (this.handledMessages[id] < minTime) {
+						delete this.handledMessages[id];
+					}
+				});
+			});
+
 			return messages.sort((a,b) => {
 				if (a.t > b.t) {
 					return 1;
