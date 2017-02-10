@@ -85,13 +85,13 @@ class APIClient {
 		.then(res => {
 			return res.chats[this.username] || [];
 		})
-		.then(res => {
-			this.lastPoll = res.reduce((i, ele) => {
+		.then(messages => {
+			this.lastPoll = messages.reduce((i, ele) => {
 				if (!i || ele.t > i) {
 					i = ele.t;
 				}
 			}, this.lastPoll);
-			return res;
+			return messages;
 		})
 		.filter(msg => {
 			if (!this.handledMessages[msg.id]) {
@@ -100,6 +100,16 @@ class APIClient {
 			}
 
 			return false;
+		})
+		.then(messages => {
+			return messages.sort((a,b) => {
+				if (a.t > b.t) {
+					return 1;
+				} else if (a.t < b.t) {
+					return -1;
+				}
+				return a.id.localeCompare(b.id);
+			});
 		});
 	}
 
