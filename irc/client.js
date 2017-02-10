@@ -71,6 +71,15 @@ class IRCClient {
 		socket.on('error', () => socket.end());
 	}
 
+	_checkSelfMessage(to, msg) {
+		const i = this._selfMessages.indexOf(`${to}|${msg}`);
+		if (i !== -1) {
+			this._selfMessages.splice(i, 1);
+			return true;
+		}
+		return false;
+	}
+
 	_pollMessages() {
 		if (!this.isWelcomed) {
 			return;
@@ -88,9 +97,7 @@ class IRCClient {
 
 			msg = msg.replace(/[\u0001\u0002\r]/g, '');
 
-			const i = this._selfMessages.indexOf(`${to}|${msg}`);
-			if (i !== -1) {
-				this._selfMessages.splice(i, 1);
+			if (this._checkSelfMessage(to, msg)) {
 				return;
 			}
 
@@ -171,11 +178,12 @@ class IRCClient {
 				} else {
 					p = this.apiClient.sendChatToUser(pmsgTo, msg);
 				}
+
+				this._selfMessages.push(`${pmsgTo}|${msg}`);
+
 				return p
-					.then(() => {
-						this._selfMessages.push(`${pmsgTo}|${msg}`);
-					})
 					.catch(e => {
+						this._checkSelfMessage(pmsgTo, msg)
 						console.warn(e.stack || e);
 					});
 			case 'MODE':
