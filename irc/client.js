@@ -67,6 +67,7 @@ class IRCClient {
 		});
 
 		socket.once('end', () => clearInterval(this._pollInterval));
+		socket.on('error', () => socket.end());
 	}
 
 	_pollMessages() {
