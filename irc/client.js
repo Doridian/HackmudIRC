@@ -72,10 +72,6 @@ class IRCClient {
 	_pollMessages() {
 		return this.apiClient.pollMessages()
 		.each(message => {
-			/*if (message.from_user === this.nick) {
-				return;
-			}*/
-
 			const from = `${message.from_user}!${message.from_user}@hackmud.trustnet`;
 			const to = message.channel ? `#${message.channel}` : message.to_user;
 			const msg = message.msg;
@@ -163,6 +159,7 @@ class IRCClient {
 				this.sendRawFromServer('475', this.formatNickForNumeric(), 'Cannot join channel (+k)');
 				return this.leaveFrom(jchan);
 			case 'PART':
+				// TODO: Wait for Sean
 				const pchan = args[0];
 				if (!this.channels[pchan]) {
 					return;
@@ -204,7 +201,6 @@ class IRCClient {
 
 				if (wasUserSwap) {
 					this.channels.forEach(c => this.leaveFrom(c));
-					// Make leave channels
 					channels.forEach(c => this.joinTo(c));
 				}
 			})
