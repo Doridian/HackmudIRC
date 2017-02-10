@@ -73,12 +73,14 @@ class IRCClient {
 		if (!this.isWelcomed) {
 			return;
 		}
-		
+
 		return this.apiClient.pollMessages()
 		.each(message => {
 			const from = `${message.from_user}!${message.from_user}@hackmud.trustnet`;
 			const to = message.channel ? `#${message.channel}` : message.to_user;
-			const msg = message.msg;
+			let msg = message.msg;
+
+			msg = msg.replace(/[\u0001\u0002]/g, '');
 
 			const i = this._selfMessages.indexOf(`${to}|${msg}`);
 			if (i !== -1) {
@@ -86,7 +88,14 @@ class IRCClient {
 				return;
 			}
 
-			this.sendRaw(from, 'PRIVMSG', to, msg);
+			if (message.from_user === this.nick && message.to_user) {
+				if (message.to_user === this.nick) {
+					return;
+				}
+				return this.sendRaw(`${message.to_user}!${message.to_user}@hackmud.trustnet`, 'PRIVMSG', this.nick, '\u0001ACTION [REPLAY] ' + msg + '\u0001');
+			}
+
+			return this.sendRaw(from, 'PRIVMSG', to, msg);
 		})
 		.catch(e => {
 			console.error(e.stack || e);
@@ -136,7 +145,14 @@ class IRCClient {
 				}
 
 				const pmsgTo = args[0];
-				const msg = args[1];
+				let msg = args[1];
+
+				if (msg.charCodeAt(0) === 1 || msg.charCodeAt(0) === 2) {
+					if (msg.substr(1, 6).toUpperCase() !== 'ACTION') {
+						return;
+					}
+					msg = '*' + msg.substring(8, msg.length - 1) + '*';
+				}
 
 				let p;
 				if (pmsgTo.charAt(0) === '#') {
@@ -154,6 +170,8 @@ class IRCClient {
 			case 'MODE':
 			case 'QUIT':
 				return;
+			case 'NAMES':
+				return this.sendChannelNames(args[0]);
 			case 'JOIN':
 				// TODO: Wait for Sean
 				const jchan = args[0];
@@ -201,6 +219,8 @@ class IRCClient {
 					this.sendRawFromServer('002', this.formatNickForNumeric(), 'Your host is ' + this.server.ident + ', running version zdc-hackmud-chat-0.0.1');
 					this.sendRawFromServer('003', this.formatNickForNumeric(), 'This server was created ' + new Date());
 					this.sendRawFromServer('004', this.formatNickForNumeric(), this.server.ident, 'zdc-hackmud-chat-0.0.1', 'inkvo', 'inkvo', 'inkvo');
+
+					this.sendRaw('*system', 'NOTICE', this.nick, 'Your persistent token (you can also use this as server password) is ' + this.apiClient.token);
 				}
 
 				if (wasUserSwap) {
@@ -228,7 +248,13 @@ class IRCClient {
 			channel = `#${channel}`;
 		}
 		this.channels[channel] = true;
-		return this.sendRawFromSelf('JOIN', channel);
+		this.sendRawFromSelf('JOIN', channel);
+		return this.sendChannelNames(channel);
+	}
+
+	sendChannelNames(channel) {
+		this.sendRawFromServer('353', this.formatNickForNumeric(), '@', channel, this.nick);
+		this.sendRawFromServer('366', this.formatNickForNumeric(), channel, 'End of /NAMES list');
 	}
 
 	kill(sendError = true) {

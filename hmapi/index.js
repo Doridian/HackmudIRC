@@ -16,7 +16,7 @@ function sendAPI(method, params) {
 		.then(res => res.body)
 		.then(res => {
 			if (!res.ok) {
-				throw new Error('Res is not OK');
+				throw new Error('Res is not OK ' + JSON.stringify(res));
 			}
 			return res;
 		});
