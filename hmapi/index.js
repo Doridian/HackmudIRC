@@ -95,7 +95,7 @@ class APIClient {
 			return false;
 		})
 		.then(messages => {
-			this.lastPoll = messages.reduce((i, ele) => {
+			return Promise.reduce(messages, (i, ele) => {
 				if (!ele || !ele.t) {
 					return i;
 				}
@@ -105,8 +105,11 @@ class APIClient {
 				}
 
 				return i;
-			}, this.lastPoll);
-			return messages;
+			}, this.lastPoll)
+			.then(l => {
+				this.lastPoll = l;
+			})
+			.thenReturn(messages);
 		})
 		.then(messages => {
 			return messages.sort((a,b) => {
