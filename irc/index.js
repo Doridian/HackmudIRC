@@ -7,6 +7,7 @@ class IRCServer {
 	constructor(port, ident) {
 		this._clients = [];
 		this.ident = ident;
+		this.start = new Date();
 
 		const server = net.createServer(c => {
 			const clt = new IRCClient(this, c);

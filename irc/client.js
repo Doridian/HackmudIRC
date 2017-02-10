@@ -228,7 +228,7 @@ class IRCClient {
 					this.isWelcomed = true;
 					this.sendRawFromServer('001', this.formatNickForNumeric(), 'Welcome to the Hackmud Chat Gateway');
 					this.sendRawFromServer('002', this.formatNickForNumeric(), 'Your host is ' + this.server.ident + ', running version zdc-hackmud-chat-0.0.1');
-					this.sendRawFromServer('003', this.formatNickForNumeric(), 'This server was created ' + new Date());
+					this.sendRawFromServer('003', this.formatNickForNumeric(), 'This server was created ' + this.server.start);
 					this.sendRawFromServer('004', this.formatNickForNumeric(), this.server.ident, 'zdc-hackmud-chat-0.0.1', 'inkvo', 'inkvo', 'inkvo');
 
 					this.sendRaw('*system', 'NOTICE', this.nick, 'Your persistent token (you can also use this as server password) is ' + this.apiClient.token);
