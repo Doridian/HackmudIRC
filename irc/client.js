@@ -70,6 +70,10 @@ class IRCClient {
 	}
 
 	_pollMessages() {
+		if (!this.isWelcomed) {
+			return;
+		}
+		
 		return this.apiClient.pollMessages()
 		.each(message => {
 			const from = `${message.from_user}!${message.from_user}@hackmud.trustnet`;
