@@ -83,8 +83,6 @@ class APIClient {
 			return Promise.reject(new Error('Not logged in'));
 		}
 
-		let hitPivot = false;
-
 		return sendAPI('chats', { chat_token: this.token, after: this.lastPoll - ADJUST_MARGIN, usernames: [this.username] })
 		.then(res => {
 			return res.chats[this.username] || [];
@@ -118,24 +116,12 @@ class APIClient {
 			if (pivotIdx < 0) {
 				return messages;
 			}
-
+			
 			messages.splice(0, pivotIdx + 1);
 			return messages;
 		})
-		.filter(msg => {
-			if (!this.pivotMessage) {
-				return true;
-			}
-
-			if (msg.id === this.pivotMessage) {
-				hitPivot = true;
-				return false;
-			}
-
-			return hitPivot;
-		})
 		.tap(messages => {
-			const msg = messages[0];
+			const msg = messages[messages.length - 1];
 			if (msg) {
 				this.lastPoll = msg.t;
 				this.pivotMessage = msg.id;

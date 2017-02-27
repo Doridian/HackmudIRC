@@ -42,7 +42,7 @@ class IRCClient {
 		this._lineQueue = [];
 		this._lineQueueProcessing = false;
 
-		this._pollInterval = setInterval(() => this._pollMessages(), 1000);
+		this._pollInterval = setInterval(() => this._pollMessages(), 2000);
 
 		emitLines(socket);
 		socket.on('line', l => {
@@ -91,8 +91,29 @@ class IRCClient {
 			const to = message.channel ? `#${message.channel}` : message.to_user;
 			let msg = message.msg;
 
-			if (message.channel && !this.channels[to]) {
-				this.joinTo(to);
+			if (message.channel) {
+				const channel = this._getChannel(to);
+
+				if (!channel.joined) {
+					this.joinTo(to);
+				}
+
+				if (message.is_join) {
+					if (!channel.users.includes(message.from_user)) {
+						channel.users.push(message.from_user);
+						this.sendRaw(from, 'JOIN', to);
+					}
+					return;
+				}
+
+				if (message.is_leave) {
+					const userIdx = channel.users.indexOf(message.from_user);
+					if (userIdx >= 0) {
+						channel.users.splice(userIdx, 1);
+						this.sendRaw(from, 'PART', to);
+					}
+					return;
+				}
 			}
 
 			msg = msg.replace(/[\x01\x02\r]/g, '');
@@ -251,14 +272,37 @@ class IRCClient {
 					}
 					this._selfMessages = [];
 					Object.keys(this.channels).forEach(c => this.leaveFrom(c));
-					channels.forEach(c => this.joinTo(c));
+					Object.keys(channels).forEach(c => {
+						this.setUserList(c, channels[c]);
+						this.joinTo(c);
+					});
 				}
 			})
 			.catch(e => {
 				this.nick = this._lastValidNick;
+				console.log(e, e.stack);
 				return this.sendRawFromServer('432', this.formatNickForNumeric(), 'Erroneous Nickname');
 			});
 		}
+	}
+
+	_getChannel(channel) {
+		let c = this.channels[channel];
+		if (!c) {
+			c = {
+				joined: false,
+				users: [],
+			};
+			this.channels[channel] = c;
+		}
+		return c;
+	}
+
+	setUserList(channel, users) {
+		if (channel.charAt(0) !== '#') {
+			channel = `#${channel}`;
+		}
+		this._getChannel(channel).users = users;
 	}
 
 	leaveFrom(channel) {
@@ -273,13 +317,13 @@ class IRCClient {
 		if (channel.charAt(0) !== '#') {
 			channel = `#${channel}`;
 		}
-		this.channels[channel] = true;
+		this._getChannel(channel).joined = true;
 		this.sendRawFromSelf('JOIN', channel);
 		return this.sendChannelNames(channel);
 	}
 
 	sendChannelNames(channel) {
-		this.sendRawFromServer('353', this.formatNickForNumeric(), '@', channel, this.nick);
+		this.sendRawFromServer('353', this.formatNickForNumeric(), '@', channel, this._getChannel(channel).users.join(' '));
 		this.sendRawFromServer('366', this.formatNickForNumeric(), channel, 'End of /NAMES list');
 	}
 
